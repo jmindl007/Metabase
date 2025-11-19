@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Registrace EV podle krajů</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="ev-registrace.css">
+</head>
+<body>
+<div id="ev-kraje-root">
+  <div id="ev-kraje-map-wrapper">
+    <div id="ev-kraje-title">Registrace EV podle krajů</div>
+    <div id="ev-kraje-error"></div>
+
+    <div id="ev-kraje-maps-row">
+      <div id="ev-kraje-map-kraje" class="ev-map">
+        <a href="https://vozidlaonline.cz" class="ev-map-logo" target="_blank" rel="noopener">
+          <img src="https://vozidlaonline.cz/wp-content/uploads/2025/09/vozidlaonline.cz-logo_small.png"
+               alt="Vozidlaonline.cz">
+        </a>
+      </div>
+      <div id="ev-kraje-map-okresy" class="ev-map">
+        <a href="https://vozidlaonline.cz" class="ev-map-logo" target="_blank" rel="noopener">
+          <img src="https://vozidlaonline.cz/wp-content/uploads/2025/09/vozidlaonline.cz-logo_small.png"
+               alt="Vozidlaonline.cz">
+        </a>
+      </div>
+    </div>
+
+    <div class="ev-filter">
+      <div class="ev-filter-block">
+        <label>Od</label>
+        <div style="display:flex; gap:6px;">
+          <select id="ev-kraje-month-from"></select>
+          <select id="ev-kraje-year-from"></select>
+        </div>
+      </div>
+
+      <div class="ev-filter-block">
+        <label>Do</label>
+        <div style="display:flex; gap:6px;">
+          <select id="ev-kraje-month-to"></select>
+          <select id="ev-kraje-year-to"></select>
+        </div>
+      </div>
+
+      <button id="ev-kraje-reload">Načíst</button>
+
+      <input type="hidden" id="ev-kraje-from">
+      <input type="hidden" id="ev-kraje-to">
+    </div>
+  </div>
+
+  <div class="ev-table-wrapper" id="ev-kraje-section">
+    <div class="ev-section-title">
+      <span class="ev-section-label" id="ev-kraje-section-label">Kraje</span>
+      <span class="ev-section-arrow">▼</span>
+    </div>
+    <div class="ev-table-scroll">
+      <table id="ev-kraje-table" class="ev-table">
+        <thead></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div id="ev-kraje-month-nav" class="ev-month-nav"></div>
+  </div>
+
+  <div class="ev-table-wrapper" id="ev-okresy-section" style="display:none;">
+    <div class="ev-section-title">
+      <span class="ev-section-label" id="ev-okresy-title"></span>
+      <span class="ev-section-arrow">▼</span>
+    </div>
+    <div class="ev-table-scroll">
+      <table id="ev-okresy-table" class="ev-table">
+        <thead></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div id="ev-okresy-month-nav" class="ev-month-nav"></div>
+  </div>
+
+  <div class="ev-table-wrapper" id="ev-regmista-section" style="display:none;">
+    <div class="ev-section-title">
+      <span class="ev-section-label" id="ev-regmista-title"></span>
+      <span class="ev-section-arrow">▼</span>
+    </div>
+    <div class="ev-table-scroll">
+      <table id="ev-regmista-table" class="ev-table">
+        <thead></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div id="ev-regmista-month-nav" class="ev-month-nav"></div>
+  </div>
+
+  <div class="ev-table-wrapper" id="ev-firmy-section" style="display:none;">
+    <div class="ev-section-title">
+      <span class="ev-section-label" id="ev-firmy-title"></span>
+      <span class="ev-section-arrow">▼</span>
+    </div>
+    <div class="ev-table-scroll">
+      <table id="ev-firmy-table" class="ev-table">
+        <thead></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p style="margin: 12px 16px 18px; font-size: 13px; color: #4b5563;">
+      Kliknutím na řádek firmy otevřete detail v novém okně včetně mapy a seznamu vozidel.
+    </p>
+  </div>
+</div>
+
+<div id="ev-loading-overlay">Načítají se data ...</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="ev-registrace.js"></script>
+</body>
+</html>

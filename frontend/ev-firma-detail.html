@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Detail firmy – registrace EV</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f3f4f6;
+      color: #111827;
+    }
+
+    .detail-root {
+      max-width: 960px;
+      margin: 32px auto;
+      padding: 0 16px 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .detail-card {
+      background: #fff;
+      border-radius: 16px;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+      padding: 18px;
+    }
+
+    .detail-header h1 {
+      margin: 0 0 6px;
+      font-size: 26px;
+      font-weight: 700;
+    }
+
+    .detail-header p {
+      margin: 0;
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    #firm-map {
+      width: 100%;
+      height: 360px;
+      border-radius: 14px;
+      border: 1px solid #e5e7eb;
+    }
+
+    table.detail-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    table.detail-table th,
+    table.detail-table td {
+      border: 1px solid #f1f2f6;
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+
+    table.detail-table th {
+      background: #f9fafb;
+      text-align: left;
+      width: 180px;
+      color: #4b5563;
+    }
+
+    table.detail-table td {
+      font-weight: 600;
+    }
+
+    table.detail-table.second th,
+    table.detail-table.second td {
+      text-align: left;
+      width: auto;
+    }
+
+    .badge {
+      display: inline-flex;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      background: #e0f2fe;
+      color: #0369a1;
+      font-weight: 600;
+    }
+
+    .notice {
+      margin-top: 8px;
+      font-size: 13px;
+      color: #6b7280;
+    }
+
+    .error {
+      color: #b91c1c;
+      font-weight: 600;
+    }
+
+    @media (max-width: 640px) {
+      table.detail-table th {
+        width: 140px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="detail-root">
+    <div class="detail-card detail-header">
+      <h1 id="firm-name">Načítání…</h1>
+      <p id="firm-meta"></p>
+      <div class="badge" id="firm-range"></div>
+    </div>
+
+    <div class="detail-card">
+      <div id="firm-map"></div>
+      <p class="notice" id="map-notice"></p>
+    </div>
+
+    <div class="detail-card">
+      <h2>Souhrn údajů o firmě</h2>
+      <table class="detail-table" id="firm-info-table"></table>
+    </div>
+
+    <div class="detail-card">
+      <h2>Seznam registrovaných vozidel</h2>
+      <table class="detail-table second" id="firm-vehicles-table"></table>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+  (function() {
+    function renderError(message) {
+      document.getElementById('firm-name').textContent = 'Detail firmy není k dispozici';
+      document.getElementById('firm-meta').textContent = '';
+      document.getElementById('firm-range').style.display = 'none';
+      document.getElementById('firm-info-table').innerHTML = `<tr><td class="error">${message}</td></tr>`;
+      document.getElementById('firm-vehicles-table').innerHTML = '';
+      document.getElementById('map-notice').textContent = '';
+    }
+
+    function parseParams() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('dataKey');
+    }
+
+    function loadPayload(key) {
+      if (!key) return null;
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        localStorage.removeItem(key);
+        return parsed;
+      } catch (e) {
+        console.error('Chyba při čtení detailu firmy', e);
+        return null;
+      }
+    }
+
+    function renderInfoTable(firma) {
+      const rows = [
+        ['Jméno firmy', firma.nazev || '—'],
+        ['IČO', firma.ico || '—'],
+        ['Ulice', firma.ulice || '—'],
+        ['Číslo popisné', firma.cislo_popisne || '—'],
+        ['Číslo orientační', firma.cislo_orientacni || '—'],
+        ['Obec', firma.obec || '—'],
+        ['Okres', firma.okres || '—'],
+        ['Kraj', firma.kraj || '—'],
+        ['Typ společnosti', firma.typ_spolecnosti || '—'],
+        ['Celkový počet EV aut', firma.celkem_ev != null ? firma.celkem_ev : '—']
+      ];
+
+      const table = document.getElementById('firm-info-table');
+      table.innerHTML = rows.map(([label, value]) => `
+        <tr>
+          <th>${label}</th>
+          <td>${value}</td>
+        </tr>
+      `).join('');
+    }
+
+    function renderVehiclesTable(vehicles) {
+      const table = document.getElementById('firm-vehicles-table');
+      if (!vehicles || !vehicles.length) {
+        table.innerHTML = '<tr><td class="notice">Pro tuto firmu nejsou dostupná žádná vozidla.</td></tr>';
+        return;
+      }
+
+      const head = `
+        <tr>
+          <th>Tovární značka</th>
+          <th>Model</th>
+          <th>VIN</th>
+          <th>Datum registrace</th>
+        </tr>
+      `;
+
+      const body = vehicles.map(v => `
+        <tr>
+          <td>${v.tovarni_znacka || v.znacka || '—'}</td>
+          <td>${v.model || '—'}</td>
+          <td>${v.vin || '—'}</td>
+          <td>${v.datum_registrace || v.registration_date || '—'}</td>
+        </tr>
+      `).join('');
+
+      table.innerHTML = head + body;
+    }
+
+    function initMap(firma) {
+      const lat = Number(firma.latitude);
+      const lng = Number(firma.longitude);
+      const hasCoords = Number.isFinite(lat) && Number.isFinite(lng);
+      const mapNotice = document.getElementById('map-notice');
+
+      if (!hasCoords) {
+        document.getElementById('firm-map').style.display = 'none';
+        mapNotice.textContent = 'Pro tuto firmu není k dispozici přesná poloha. Zobrazuje se pouze tabulkový přehled.';
+        return;
+      }
+
+      const map = L.map('firm-map', {
+        center: [lat, lng],
+        zoom: 13,
+        zoomControl: true,
+        attributionControl: false
+      });
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18
+      }).addTo(map);
+
+      L.marker([lat, lng]).addTo(map)
+        .bindPopup(`<strong>${firma.nazev || ''}</strong><br>${firma.ulice || ''}`)
+        .openPopup();
+
+      mapNotice.textContent = 'Pozice vychází z dat dodaných z registru. V případě odchylky kontaktujte administrátora.';
+    }
+
+    function init() {
+      const dataKey = parseParams();
+      const payload = loadPayload(dataKey);
+      if (!payload) {
+        renderError('Nepodařilo se načíst vybranou firmu. Vraťte se zpět a akci opakujte.');
+        return;
+      }
+
+      const firma = payload.firma || {};
+
+      document.getElementById('firm-name').textContent = firma.nazev || 'Neznámá firma';
+      document.getElementById('firm-meta').textContent = [firma.obec, firma.okres, firma.kraj].filter(Boolean).join(' · ');
+      document.getElementById('firm-range').textContent = payload.filters ? `${payload.filters.from} – ${payload.filters.to}` : '';
+
+      renderInfoTable(firma);
+      renderVehiclesTable(payload.vozidla || []);
+      initMap(firma);
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  })();
+  </script>
+</body>
+</html>
